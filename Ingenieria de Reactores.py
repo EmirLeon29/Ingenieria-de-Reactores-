@@ -1,4 +1,6 @@
 import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
 
 # Configuración global de toda la aplicación (solo debe estar en este archivo)
 st.set_page_config(
