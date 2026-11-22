@@ -7,7 +7,7 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("🍊 Simulador Virtual: Planta Procesadora de Jugo de Naranja")
+st.title("Calculo para Diferentes tipos de Reactores")
 st.markdown(
     """
     Bienvenido al entorno de simulación de proceso basado en una capacidad nominal de 
