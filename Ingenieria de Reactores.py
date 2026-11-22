@@ -161,3 +161,16 @@ with c2:
     st.pyplot(fig3)
     plt.close(fig3)
 
+st.markdown("---")
+st.markdown(
+    """
+    Integrantes.
+    - Andrés Hernandez Juan Pablo 
+    - Castelan Otelo Diana Gabriela 
+    - Escalante Perez Sundhury Sarahi
+    - León Salinas Emir Armando
+    - Manzano Bermúdez Armando Eduardo
+
+    """
+)
+
