@@ -166,7 +166,7 @@ st.markdown(
     """
     Integrantes.
     - Andrés Hernandez Juan Pablo 
-    - Castelan Otelo Diana Gabriela 
+    - HP 
     - Escalante Perez Sundhury Sarahi
     - León Salinas Emir Armando
     - Manzano Bermúdez Armando Eduardo
