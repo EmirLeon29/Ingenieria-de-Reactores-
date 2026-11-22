@@ -7,90 +7,106 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("Calculo para Diferentes tipos de Reactores")
-st.markdown(
-    """
-    Bienvenido al entorno de simulación de proceso basado en una capacidad nominal de 
-    **1,500,000 L/año** de zumo comercial (8 % de pulpa).
-    
-    Selecciona una etapa del proceso en el **menú de la barra lateral izquierda** para 
-    ejecutar los balances de materia y pruebas de sensibilidad:
-    """
+# --- PANEL LATERAL DE CONFIGURACIÓN ---
+st.sidebar.header("Configuración del Sistema")
+
+arreglo = st.sidebar.selectbox(
+    "Arreglo de reactores:",
+    ["Tanque Individual", "Tanques en Serie", "Tanques en Paralelo"]
 )
 
-st.markdown("---")
+tipo_reactor = st.sidebar.selectbox(
+    "Tipo de reactor:",
+    ["RTCA (Mezcla Completa)", "RTFP (Flujo Pistón)"]
+)
 
-# Resumen de arquitectura del proceso para todo el equipo
-col1, col2, col3 = st.columns(3)
+if arreglo == "Tanque Individual":
+    n_tanques = 1
+else:
+    n_tanques = st.sidebar.slider("Cantidad de tanques (N):", min_value=2, max_value=10, value=3)
 
-with col1:
-    st.info(
-        "**1. Selección, Lavado y Extracción**\n\n"
-        "Descarte de fruta dañada, higienización superficial y exprimido mecánico para "
-        "obtener jugo bruto y subproductos (piel,semillas y aceites)."
-    )
+st.sidebar.markdown("---")
+st.sidebar.header("Parámetros Cinéticos y de Operación")
 
-with col2:
-    st.info(
-        "**2. Tamizado y Enfriamiento**\n\n"
-        "Filtración para estandarizar el contenido de pulpa (del 12 % al 8 %) y descenso "
-        "térmico rápido para frenar la degradación enzimática."
-    )
+k = st.sidebar.number_input("Constante cinética k (1/min):", min_value=0.001, value=0.25, step=0.05)
+ca0 = st.sidebar.number_input("Concentración inicial CA0 (mol/L):", min_value=0.01, value=1.0, step=0.1)
 
-with col3:
-    st.info(
-        "**3. Tanques Asépticos**\n\n"
-        "Almacenamiento intermedio estéril bajo atmósfera controlada para estabilizar el "
-        "flujo continuo y evitar la recontaminación microbiológica."
-    )
+variable_calcular = st.sidebar.radio(
+    "¿Qué deseas calcular?",
+    ["Porcentaje de Conversión (X)", "Tiempo de Permanencia Total (τ)"]
+)
+
+# --- LÓGICA DE CÁLCULO (Orden 1) ---
+if variable_calcular == "Porcentaje de Conversión (X)":
+    tau_total = st.sidebar.number_input("Tiempo de permanencia total τ (min):", min_value=0.1, value=5.0, step=0.5)
     
-col4, col5, col6 = st.columns(3)
+    if arreglo == "Tanques en Paralelo":
+        # El flujo se divide entre N ramas iguales; cada rama tiene el mismo tau que el sistema total
+        tau_i = tau_total
+        if "RTCA" in tipo_reactor:
+            x_final = (k * tau_i) / (1 + k * tau_i)
+        else:
+            x_final = 1 - np.exp(-k * tau_i)
+        conversiones_etapa = [x_final] * n_tanques
+    else:
+        # Individual o en Serie
+        tau_i = tau_total / n_tanques
+        conversiones_etapa = []
+        ca_actual = ca0
+        for _ in range(n_tanques):
+            if "RTCA" in tipo_reactor:
+                ca_salida = ca_actual / (1 + k * tau_i)
+            else:
+                ca_salida = ca_actual * np.exp(-k * tau_i)
+            x_etapa = (ca0 - ca_salida) / ca0
+            conversiones_etapa.append(x_etapa)
+            ca_actual = ca_salida
+        x_final = conversiones_etapa[-1]
 
-with col4:
-    st.info(
-        "**4. Homogenización**\n\n"
-        "Reducción mecánica de partículas a alta presión para dar uniformidad física al jugo "
-        "y evitar la separación de fases."
-    )
+else:
+    x_deseada_pct = st.sidebar.slider("Conversión deseada (%):", min_value=1.0, max_value=99.0, value=80.0)
+    x_final = x_deseada_pct / 100.0
+    
+    if "RTCA" in tipo_reactor:
+        if arreglo == "Tanques en Paralelo":
+            tau_total = x_final / (k * (1 - x_final))
+        else:
+            tau_i = (1 / k) * ((1 / (1 - x_final))**(1 / n_tanques) - 1)
+            tau_total = tau_i * n_tanques
+    else:
+        tau_total = -np.log(1 - x_final) / k
+        tau_i = tau_total / n_tanques if arreglo != "Tanques en Paralelo" else tau_total
 
-with col5:
-    st.info(
-        "**5. Desaireación**\n\n"
-        "Extracción de oxígeno disuelto al vacío para prevenir la oxidación de la vitamina C, "
-        "evitar formación de espuma y conservar el aroma."
-    )
+    # Calcular perfil por etapa para graficar
+    conversiones_etapa = []
+    ca_actual = ca0
+    for _ in range(n_tanques):
+        if arreglo == "Tanques en Paralelo":
+            conversiones_etapa.append(x_final)
+        else:
+            if "RTCA" in tipo_reactor:
+                ca_salida = ca_actual / (1 + k * tau_i)
+            else:
+                ca_salida = ca_actual * np.exp(-k * tau_i)
+            conversiones_etapa.append((ca0 - ca_salida) / ca0)
+            ca_actual = ca_salida
 
-with col6:
-    st.info(
-        "**6. Pasteurización**\n\n"
-        "Tratamiento térmico controlado (HTST) e intercambio de calor para inactivar "
-        "microorganismos patógenos y enzimas."
-    )
+# Velocidad de reacción a la salida (-rA = k * CA_final)
+ca_final = ca0 * (1 - x_final)
+velocidad_salida = k * ca_final
 
-colx, col7, col8, coly = st.columns(4)
+# --- RESULTADOS EN PANTALLA ---
+col1, col2, col3 = st.columns(3)
+col1.metric("Conversión Global (X)", f"{x_final * 100:.2f} %")
+col2.metric("Tiempo de Permanencia Total (τ)", f"{tau_total:.2f} min")
+col3.metric("Velocidad de Reacción Final (-rA)", f"{velocidad_salida:.4f} mol/(L·min)")
 
-with col7:
-    st.info(
-        "**7. Envasado Aséptico**\n\n"
-        "Llenado y sellado hermético en ambiente comercialmente estéril sobre botellas "
-        "PET (1 L), contabilizando mermas de línea."
-    )
-
-with col8:
-    st.info(
-        "**8. Etiquetado**\n\n"
-        "Identificación comercial de unidades, codificación de lote y caducidad, agrupación "
-        "en packs y paletización para despacho."
-    )
-
-st.markdown("---")
-st.subheader("Parámetros Base de Diseño (Línea Base del Equipo)")
-
-datos_base = [
-    {"Parámetro": "Producción anual de jugo comercial", "Valor": "1,500,000", "Unidad": "L/año"},
-    {"Parámetro": "Campaña de extracción", "Valor": "87", "Unidad": "días/año (8 h/día)"},
-    {"Parámetro": "Campaña de envasado", "Valor": "100", "Unidad": "días/año (8 h/día)"},
-    {"Parámetro": "Densidad del jugo comercial", "Valor": "1.045", "Unidad": "kg/L"},
-    {"Parámetro": "Rendimiento global extracción", "Valor": "50.0", "Unidad": "%"},
-]
-st.dataframe(datos_base, use_container_width=True, hide_index=True)
+# --- GRÁFICO ---
+st.subheader("Perfil de Conversión por Reactor")
+fig, ax = plt.subplots(figsize=(8, 3.5))
+etapas = [f"R-{i+1}" for i in range(n_tanques)]
+ax.bar(etapas, [x * 100 for x in conversiones_etapa], color="#2b7bba")
+ax.set_ylabel("Conversión Acumulada (%)")
+ax.set_ylim(0, 105)
+ax.grid(axis="y", linestyle="--", alpha=0.5)
+st.pyplot(fig)
