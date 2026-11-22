@@ -2,8 +2,8 @@ import streamlit as st
 
 # Configuración global de toda la aplicación (solo debe estar en este archivo)
 st.set_page_config(
-    page_title="Simulador Planta de Jugo de Naranja",
-    page_icon="🍊",
+    page_title="Ingenieria de Reactores",
+    page_icon="🥼",
     layout="wide",
 )
 
