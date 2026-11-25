@@ -166,8 +166,8 @@ st.markdown(
     """
     Integrantes.
     - Andrés Hernandez Juan Pablo 
+    - Escalante Perez Sundhury Sarahi 
     - Hernandez Perez Oscar Daniel  
-    - Escalante Perez Sundhury Sarahi
     - León Salinas Emir Armando
     - Manzano Bermúdez Armando Eduardo
 
